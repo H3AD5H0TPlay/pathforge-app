@@ -1,0 +1,159 @@
+.board {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.board-header {
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.board-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.board-stats {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.stat strong {
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.board-content {
+  flex: 1;
+  display: flex;
+  gap: 1.5rem;
+  padding: 2rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 0;
+}
+
+/* Custom scrollbar for horizontal scroll */
+.board-content::-webkit-scrollbar {
+  height: 8px;
+}
+
+.board-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.board-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.board-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .board-header {
+    padding: 1.5rem 1rem;
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .board-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .board-stats {
+    gap: 1.5rem;
+  }
+  
+  .stat {
+    font-size: 0.8rem;
+  }
+  
+  .stat strong {
+    font-size: 1.25rem;
+  }
+  
+  .board-content {
+    padding: 1rem;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .board-header {
+    padding: 1rem 0.5rem;
+  }
+  
+  .board-header h1 {
+    font-size: 1.25rem;
+  }
+  
+  .board-stats {
+    gap: 1rem;
+  }
+  
+  .board-content {
+    padding: 0.5rem;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
+/* Loading and empty states */
+.board-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: white;
+  font-size: 1.1rem;
+}
+
+.board-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+}
+
+.board-empty h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.board-empty p {
+  margin: 0 0 2rem 0;
+  font-size: 1rem;
+  opacity: 0.8;
+}
