@@ -1,5 +1,6 @@
 import './App.css'
 import Board from './components/Board'
+import TestBoard from './components/TestBoard'
 
 function App() {
   return (

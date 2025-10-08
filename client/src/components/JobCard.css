@@ -147,6 +147,27 @@
   color: var(--text-primary);
 }
 
+.btn-delete {
+  background: transparent;
+  color: var(--error-color);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+}
+
+.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--error-color);
+  transform: translateY(-1px);
+}
+
 /* Dragging styles */
 .job-card.dragging {
   opacity: 0.8;
@@ -154,6 +175,30 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
   background: var(--bg-white);
   border: 2px solid var(--primary-color);
+}
+
+/* Large screens - more spacious cards */
+@media (min-width: 1200px) {
+  .job-card {
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .job-title {
+    font-size: 1.2rem;
+  }
+  
+  .job-company {
+    font-size: 1rem;
+  }
+  
+  .job-location, .job-salary {
+    font-size: 0.9rem;
+  }
+  
+  .job-meta {
+    gap: 1rem;
+  }
 }
 
 /* Mobile responsive */

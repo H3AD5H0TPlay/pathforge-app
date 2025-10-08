@@ -3,7 +3,7 @@ import { Droppable } from 'react-beautiful-dnd';
 import JobCard from './JobCard';
 import './Column.css';
 
-const Column = ({ column, jobs, index }) => {
+const Column = ({ column, jobs, index, onAddJob, onDeleteJob }) => {
   const getColumnColor = (status) => {
     switch (status) {
       case 'applied': return '#667eea';
@@ -24,7 +24,13 @@ const Column = ({ column, jobs, index }) => {
         <span className="job-count">{jobs.length}</span>
       </div>
       
-      <Droppable droppableId={column.id}>
+      <Droppable 
+        droppableId={column.id} 
+        isDropDisabled={false} 
+        isCombineEnabled={false}
+        ignoreContainerClipping={false}
+        renderClone={undefined}
+      >
         {(provided, snapshot) => (
           <div
             className={`job-list ${snapshot.isDraggingOver ? 'dragging-over' : ''}`}
@@ -36,6 +42,7 @@ const Column = ({ column, jobs, index }) => {
                 key={job.id} 
                 job={job} 
                 index={index}
+                onDelete={onDeleteJob}
               />
             ))}
             {provided.placeholder}
@@ -50,7 +57,10 @@ const Column = ({ column, jobs, index }) => {
       </Droppable>
       
       <div className="column-footer">
-        <button className="add-job-btn">
+        <button 
+          className="add-job-btn"
+          onClick={onAddJob}
+        >
           + Add Job
         </button>
       </div>

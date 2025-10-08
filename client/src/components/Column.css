@@ -4,8 +4,11 @@
   border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  width: 320px;
-  min-height: 500px;
+  width: 100%;
+  min-width: 280px;
+  max-width: 400px;
+  height: calc(100vh - 200px);
+  max-height: 700px;
   box-shadow: var(--shadow);
   overflow: hidden;
 }
@@ -117,6 +120,46 @@
 
 .job-list::-webkit-scrollbar-thumb:hover {
   background: var(--text-light);
+}
+
+/* Large screens - wider columns for better content display */
+@media (min-width: 1400px) {
+  .column {
+    min-height: 600px;
+  }
+  
+  .column-header {
+    padding: 1.5rem;
+  }
+  
+  .column-title {
+    font-size: 1.2rem;
+  }
+  
+  .job-list {
+    padding: 1.25rem;
+  }
+  
+  .add-job-btn {
+    padding: 0.875rem 1.125rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* Tablet responsive - fixed width for horizontal scroll */
+@media (max-width: 1199px) {
+  .column {
+    width: 280px;
+    flex-shrink: 0;
+    min-width: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .column {
+    width: 260px;
+    min-width: 260px;
+  }
 }
 
 /* Mobile responsive */

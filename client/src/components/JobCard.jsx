@@ -2,7 +2,7 @@ import React from 'react';
 import { Draggable } from 'react-beautiful-dnd';
 import './JobCard.css';
 
-const JobCard = ({ job, index }) => {
+const JobCard = ({ job, index, onDelete }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'applied': return 'var(--primary-color)';
@@ -28,7 +28,7 @@ const JobCard = ({ job, index }) => {
   };
 
   return (
-    <Draggable draggableId={job.id} index={index}>
+    <Draggable draggableId={job.id} index={index} isDragDisabled={false}>
       {(provided, snapshot) => (
         <div 
           className={`job-card ${snapshot.isDragging ? 'dragging' : ''}`} 
@@ -78,6 +78,16 @@ const JobCard = ({ job, index }) => {
           <div className="job-actions">
             <button className="btn-secondary">Edit</button>
             <button className="btn-primary">View Details</button>
+            <button 
+              className="btn-delete"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete && onDelete(job.id);
+              }}
+              title="Delete job application"
+            >
+              🗑️
+            </button>
           </div>
         </div>
       )}
