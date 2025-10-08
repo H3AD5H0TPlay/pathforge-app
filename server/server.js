@@ -26,6 +26,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files for testing
+app.use('/test', express.static(__dirname));
+
 // Basic route
 app.get('/', (req, res) => {
   res.json({ 
@@ -43,11 +46,19 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes placeholder
+// Import routes
+const authRoutes = require('./routes/auth');
+const jobRoutes = require('./routes/jobs');
+
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/jobs', jobRoutes);
+
+// API fallback route - catch unmatched /api routes
 app.use('/api', (req, res) => {
   res.status(404).json({
     error: 'API endpoint not found',
-    message: 'This endpoint has not been implemented yet'
+    message: `API route ${req.originalUrl} not found`
   });
 });
 
