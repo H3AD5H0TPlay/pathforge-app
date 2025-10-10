@@ -21,11 +21,34 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // Validation
+    // Basic validation
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
         message: 'Please provide name, email, and password'
+      });
+    }
+
+    // Additional validation
+    if (name.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name must be at least 2 characters long'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid email address'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
       });
     }
 
@@ -66,9 +89,9 @@ router.post('/register', async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
 
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
+    // Handle Sequelize validation errors
+    if (error.name === 'SequelizeValidationError') {
+      const messages = error.errors.map(err => err.message);
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
@@ -76,11 +99,19 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Handle duplicate email error
-    if (error.code === 11000) {
+    // Handle unique constraint errors (duplicate email)
+    if (error.name === 'SequelizeUniqueConstraintError') {
       return res.status(400).json({
         success: false,
         message: 'Email already exists'
+      });
+    }
+
+    // Handle database connection errors
+    if (error.name === 'SequelizeDatabaseError') {
+      return res.status(500).json({
+        success: false,
+        message: 'Database error occurred'
       });
     }
 
