@@ -21,7 +21,9 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Find user by ID from token
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findByPk(decoded.userId, {
+      attributes: { exclude: ['password'] }
+    });
     
     if (!user) {
       return res.status(401).json({
@@ -39,6 +41,7 @@ const authenticateToken = async (req, res, next) => {
 
     // Add user to request object
     req.user = user;
+    req.userId = user.id;
     next();
 
   } catch (error) {

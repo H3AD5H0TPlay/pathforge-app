@@ -1,19 +1,27 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+// Import database and models
+const sequelize = require('./config/database');
+const User = require('./models/User');
+const Job = require('./models/Job');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection
+// Database connection and sync
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    await sequelize.authenticate();
+    console.log('✅ SQLite Database Connected Successfully!');
+    
+    // Sync all models
+    await sequelize.sync({ alter: true });
+    console.log('✅ Database synchronized successfully!');
   } catch (error) {
-    console.error('Database connection error:', error.message);
+    console.error('❌ Database connection error:', error.message);
     process.exit(1);
   }
 };

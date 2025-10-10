@@ -1,0 +1,31 @@
+# Backend Dockerfile
+FROM node:18-alpine
+
+# Install dependencies needed for sqlite3 and build tools
+RUN apk add --no-cache python3 make g++ wget
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files and npm config
+COPY server/package*.json ./
+COPY server/.npmrc ./
+
+# Install dependencies and rebuild sqlite3 for Alpine
+RUN npm ci --only=production && npm rebuild sqlite3
+
+# Copy server source code
+COPY server/ ./
+
+# Create directory for SQLite database
+RUN mkdir -p /app/data
+
+# Expose port
+EXPOSE 3000
+
+# Health check (using wget instead of curl for Alpine)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Start the server
+CMD ["node", "server.js"]

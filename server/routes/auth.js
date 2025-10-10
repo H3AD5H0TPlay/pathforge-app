@@ -30,7 +30,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await User.findByEmail(email);
+    const existingUser = await User.findOne({ where: { email: email.toLowerCase().trim() } });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -46,11 +46,10 @@ router.post('/register', async (req, res) => {
       role: role && ['user', 'admin'].includes(role) ? role : 'user'
     };
 
-    const user = new User(userData);
-    await user.save();
+    const user = await User.create(userData);
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user.id);
 
     // Return user data without password
     const userResponse = user.getPublicProfile();
@@ -108,7 +107,9 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user and include password for comparison
-    const user = await User.findByEmail(email).select('+password');
+    const user = await User.findOne({ 
+      where: { email: email.toLowerCase().trim() } 
+    });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -134,7 +135,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user.id);
 
     // Return user data without password
     const userResponse = user.getPublicProfile();

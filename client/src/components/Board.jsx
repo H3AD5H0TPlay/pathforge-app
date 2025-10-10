@@ -32,19 +32,7 @@ const emptyData = {
     },
     'rejected': {
       id: 'rejected',
-              </DragDropContext>
-        
-        {showAddJobForm && (
-          <AddJobForm
-            token={token}
-            onJobAdded={addJob}
-            onClose={() => setShowAddJobForm(false)}
-            isDemoMode={isDemoMode}
-          />
-        )}
-      </div>
-    );
-  } catch (error) {cted',
+      title: 'Rejected',
       jobIds: []
     }
   },
@@ -489,6 +477,13 @@ const Board = () => {
     // console.log('useEffect called with token:', token); // Reduced logging
     
     const initializeApp = async () => {
+      // Check if we're in demo mode first
+      if (isDemoMode || (token && token.startsWith('demo-mode-token-'))) {
+        console.log('🎭 Demo mode detected - loading sample data immediately');
+        loadSampleData();
+        return;
+      }
+      
       // Always check backend status first
       const isBackendConnected = await checkBackendStatus();
       
@@ -503,7 +498,7 @@ const Board = () => {
     };
     
     initializeApp();
-  }, [token]);
+  }, [token, isDemoMode]);
 
   const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
