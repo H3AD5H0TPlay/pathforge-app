@@ -48,8 +48,9 @@ export const authUtils = {
 
 // Configure axios defaults and interceptors
 const configureAxios = (token, logoutFn) => {
-  // Set default base URL
-  axios.defaults.baseURL = 'http://localhost:3000/api';
+  // Set default base URL (use environment variable for production)
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  axios.defaults.baseURL = `${apiUrl}/api`;
   
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;

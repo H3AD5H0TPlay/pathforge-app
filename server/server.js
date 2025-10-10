@@ -34,8 +34,8 @@ const connectDB = async () => {
 connectDB();
 
 // CORS configuration
-const corsOptions = {
-  origin: [
+const getAllowedOrigins = () => {
+  const defaultOrigins = [
     'http://localhost:3000',
     'http://localhost:5173', // Vite dev server
     'http://127.0.0.1:5173',
@@ -45,7 +45,20 @@ const corsOptions = {
     'http://localhost:80', // Docker frontend explicit port
     'http://127.0.0.1', // Docker frontend
     'http://127.0.0.1:80' // Docker frontend explicit port
-  ],
+  ];
+
+  // Add production origins from environment variable
+  const allowedOrigins = process.env.ALLOWED_ORIGINS;
+  if (allowedOrigins) {
+    const productionOrigins = allowedOrigins.split(',').map(origin => origin.trim());
+    return [...defaultOrigins, ...productionOrigins];
+  }
+
+  return defaultOrigins;
+};
+
+const corsOptions = {
+  origin: getAllowedOrigins(),
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
