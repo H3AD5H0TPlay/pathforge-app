@@ -228,29 +228,30 @@ async function testRegistrationDuplicateEmail() {
   log('   Expected: Registration fails with clear error message "Email already in use"\n', 'dim');
   
   try {
-    // Step 1: Create first user with the specified email
-    log(`🔄 Step 1: Creating first user with email: ${TEST_EMAIL_BASE}`, 'yellow');
+    // Step 1: Create first user with a unique email (avoiding conflicts with previous tests)
+    const uniqueTestEmail = `tester_duplicate_${Date.now()}@email.com`;
+    log(`🔄 Step 1: Creating first user with email: ${uniqueTestEmail}`, 'yellow');
     
     const firstUserResponse = await axios.post(`${API_BASE_URL}/api/auth/register`, {
       name: TEST_USER_NAME,
-      email: TEST_EMAIL_BASE,
+      email: uniqueTestEmail,
       password: TEST_PASSWORD
     }, { timeout: 10000 });
 
     if (firstUserResponse.status === 201) {
-      logTest('First User Registration', true, `User created with email: ${TEST_EMAIL_BASE}`);
+      logTest('First User Registration', true, `User created with email: ${uniqueTestEmail}`);
     } else {
       logTest('First User Registration', false, 'Failed to create first user');
       return { success: false };
     }
 
     // Step 2: Attempt to create second user with EXACT same email
-    log(`🔄 Step 2: Attempting to create duplicate user with EXACT same email: ${TEST_EMAIL_BASE}`, 'yellow');
+    log(`🔄 Step 2: Attempting to create duplicate user with EXACT same email: ${uniqueTestEmail}`, 'yellow');
     
     try {
       const duplicateUserResponse = await axios.post(`${API_BASE_URL}/api/auth/register`, {
         name: 'Different User Name',
-        email: TEST_EMAIL_BASE, // EXACT same email
+        email: uniqueTestEmail, // EXACT same email
         password: 'DifferentPassword123!'
       }, { timeout: 10000 });
       
@@ -338,7 +339,7 @@ async function testRegistrationDuplicateEmail() {
     
     try {
       const loginResponse = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-        email: TEST_EMAIL_BASE,
+        email: uniqueTestEmail,
         password: TEST_PASSWORD
       }, { timeout: 5000 });
       
@@ -365,7 +366,475 @@ async function testRegistrationDuplicateEmail() {
   }
 }
 
-// Additional utility functions can be added here for future test cases
+// Test Case 3: Registration - Invalid Input Validation
+async function testRegistrationInvalidInput() {
+  log('\n📝 Test Case 3: Registration - Invalid Input', 'blue');
+  log('   Action: Attempt registration with invalid email format and blank password', 'dim');
+  log('   Expected: Form validation prevents submission, appropriate error messages displayed\n', 'dim');
+
+  // Define comprehensive invalid input test cases
+  const invalidInputCases = [
+    {
+      name: 'Invalid Email Format (test.com)',
+      data: {
+        name: TEST_USER_NAME,
+        email: 'test.com', // Missing @ symbol - exact example from requirements
+        password: TEST_PASSWORD
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'email',
+      expectedMessageKeywords: ['email', 'valid', 'format']
+    },
+    {
+      name: 'Invalid Email Format (no domain)',
+      data: {
+        name: TEST_USER_NAME,
+        email: 'test@',
+        password: TEST_PASSWORD
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'email',
+      expectedMessageKeywords: ['email', 'valid']
+    },
+    {
+      name: 'Invalid Email Format (no @ symbol)',
+      data: {
+        name: TEST_USER_NAME,
+        email: 'testuser.email.com',
+        password: TEST_PASSWORD
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'email',
+      expectedMessageKeywords: ['email', 'valid']
+    },
+    {
+      name: 'Blank Password',
+      data: {
+        name: TEST_USER_NAME,
+        email: `valid${Date.now()}@email.com`,
+        password: '' // Blank password - exact example from requirements
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'password',
+      expectedMessageKeywords: ['password', 'required']
+    },
+    {
+      name: 'Missing Password Field',
+      data: {
+        name: TEST_USER_NAME,
+        email: `valid${Date.now()}@email.com`
+        // password field completely missing
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'password',
+      expectedMessageKeywords: ['password']
+    },
+    {
+      name: 'Short Password (less than 6 characters)',
+      data: {
+        name: TEST_USER_NAME,
+        email: `valid${Date.now()}@email.com`,
+        password: '123' // Too short
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'password',
+      expectedMessageKeywords: ['password', 'characters', 'least']
+    },
+    {
+      name: 'Blank Name',
+      data: {
+        name: '', // Blank name
+        email: `valid${Date.now()}@email.com`,
+        password: TEST_PASSWORD
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'name',
+      expectedMessageKeywords: ['name', 'required']
+    },
+    {
+      name: 'Missing Name Field',
+      data: {
+        // name field completely missing
+        email: `valid${Date.now()}@email.com`,
+        password: TEST_PASSWORD
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'name',
+      expectedMessageKeywords: ['name']
+    },
+    {
+      name: 'Name Too Short (1 character)',
+      data: {
+        name: 'A', // Too short
+        email: `valid${Date.now()}@email.com`,
+        password: TEST_PASSWORD
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'name',
+      expectedMessageKeywords: ['name', 'characters']
+    },
+    {
+      name: 'Multiple Invalid Fields',
+      data: {
+        name: '', // Blank name
+        email: 'invalid.email.format', // Invalid email
+        password: '' // Blank password
+      },
+      expectedStatus: 400,
+      expectedErrorType: 'multiple',
+      expectedMessageKeywords: ['name', 'email', 'password'] // Accept any message mentioning the required fields
+    }
+  ];
+
+  let passedTests = 0;
+  let totalTests = invalidInputCases.length;
+
+  try {
+    for (let i = 0; i < invalidInputCases.length; i++) {
+      const testCase = invalidInputCases[i];
+      
+      log(`🔄 Test ${i + 1}/${totalTests}: ${testCase.name}`, 'yellow');
+      log(`   Email: "${testCase.data.email || '[MISSING]'}"`, 'dim');
+      log(`   Name: "${testCase.data.name || '[MISSING]'}"`, 'dim');
+      log(`   Password: "${testCase.data.password ? '[PROVIDED]' : '[BLANK/MISSING]'}"`, 'dim');
+
+      try {
+        // Attempt registration with invalid data
+        const response = await axios.post(`${API_BASE_URL}/api/auth/register`, testCase.data, { 
+          timeout: 10000 
+        });
+        
+        // If we reach here, the validation failed - registration should have been rejected
+        logTest(`${testCase.name} - Rejection`, false, 
+          `CRITICAL: Invalid data was accepted! Status: ${response.status}`);
+        logTest(`${testCase.name} - Security Issue`, false, 
+          'Form validation is not working - this is a security vulnerability');
+        
+      } catch (validationError) {
+        // This is the expected behavior - registration should fail with validation error
+        
+        if (validationError.response) {
+          const status = validationError.response.status;
+          const responseData = validationError.response.data;
+          
+          // Verify correct HTTP status
+          if (status === testCase.expectedStatus) {
+            logTest(`${testCase.name} - HTTP Status`, true, 
+              `Status: ${status} (correct rejection)`);
+          } else {
+            logTest(`${testCase.name} - HTTP Status`, false, 
+              `Expected ${testCase.expectedStatus}, got ${status}`);
+            continue;
+          }
+          
+          // Verify success flag is false
+          if (responseData.success === false) {
+            logTest(`${testCase.name} - Success Flag`, true, 
+              'Success flag correctly set to false');
+          } else {
+            logTest(`${testCase.name} - Success Flag`, false, 
+              `Success flag should be false, got: ${responseData.success}`);
+            continue;
+          }
+          
+          // Verify appropriate error message
+          const errorMessage = responseData.message || '';
+          const hasExpectedKeywords = testCase.expectedMessageKeywords.some(keyword => 
+            errorMessage.toLowerCase().includes(keyword.toLowerCase())
+          );
+          
+          if (hasExpectedKeywords) {
+            logTest(`${testCase.name} - Error Message`, true, 
+              `Appropriate message: "${errorMessage}"`);
+          } else {
+            logTest(`${testCase.name} - Error Message`, false, 
+              `Message lacks expected keywords (${testCase.expectedMessageKeywords.join(', ')}): "${errorMessage}"`);
+            continue;
+          }
+          
+          // Verify no authentication token provided
+          if (!responseData.token && (!responseData.data || !responseData.data.token)) {
+            logTest(`${testCase.name} - No Token`, true, 
+              'No token provided for invalid input (correct)');
+          } else {
+            logTest(`${testCase.name} - No Token`, false, 
+              'SECURITY ISSUE: Token provided for invalid input');
+            continue;
+          }
+          
+          // Verify no user data provided
+          if (!responseData.user && (!responseData.data || !responseData.data.user)) {
+            logTest(`${testCase.name} - No User Data`, true, 
+              'No user data provided for invalid input (correct)');
+          } else {
+            logTest(`${testCase.name} - No User Data`, false, 
+              'User data provided for invalid input');
+            continue;
+          }
+          
+          passedTests++;
+          
+        } else {
+          logTest(`${testCase.name} - Response`, false, 
+            'No response received for invalid input test');
+        }
+      }
+    }
+
+    // Summary for this test case
+    log(`\n📊 Invalid Input Validation Summary:`, 'cyan');
+    log(`   Passed: ${passedTests}/${totalTests} validation tests`, passedTests === totalTests ? 'green' : 'red');
+    
+    if (passedTests === totalTests) {
+      logTest('Complete Invalid Input Validation', true, 
+        'All invalid input cases properly rejected with appropriate messages');
+      
+      // Test that valid input still works after all these invalid attempts
+      log(`🔄 Verification: Valid registration still works after invalid attempts`, 'yellow');
+      
+      try {
+        const validTestResponse = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+          name: 'Valid Test User',
+          email: `valid_after_invalid_${Date.now()}@email.com`,
+          password: 'ValidPassword123!'
+        }, { timeout: 10000 });
+        
+        if (validTestResponse.status === 201 && validTestResponse.data.success) {
+          logTest('Valid Registration After Invalid Tests', true, 
+            'System still accepts valid input after rejecting invalid input');
+        } else {
+          logTest('Valid Registration After Invalid Tests', false, 
+            'System may be damaged by invalid input tests');
+        }
+      } catch (validTestError) {
+        logTest('Valid Registration After Invalid Tests', false, 
+          `Valid registration failed: ${validTestError.message}`);
+      }
+      
+      return { success: true, testsRun: totalTests, testsPassed: passedTests };
+      
+    } else {
+      logTest('Complete Invalid Input Validation', false, 
+        `${totalTests - passedTests} validation cases failed - form validation has critical issues`);
+      
+      return { success: false, testsRun: totalTests, testsPassed: passedTests };
+    }
+
+  } catch (error) {
+    logTest('Invalid Input Test Setup', false, 
+      `Test setup failed: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}
+
+// Test Case 4: Login Success
+async function testLoginSuccess() {
+  log('\n🔐 Test Case 4: Login - Success', 'blue');
+  log('   Action: Log in with valid credentials of an existing user', 'dim');
+  log('   Expected: Login successful, JWT in response, redirect to job board\n', 'dim');
+
+  try {
+    // First, create a test user to login with
+    const testUser = {
+      name: 'Login Test User',
+      email: generateUniqueEmail(),
+      password: 'LoginTest123!'
+    };
+
+    log(`🔄 Creating test user for login: ${testUser.email}`, 'yellow');
+    
+    const registrationResponse = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      name: testUser.name,
+      email: testUser.email,
+      password: testUser.password
+    }, { timeout: 10000 });
+
+    if (registrationResponse.status !== 201) {
+      logTest('Login Test - User Creation', false, 'Failed to create test user for login');
+      return { success: false };
+    }
+
+    logTest('Login Test - User Creation', true, 'Test user created successfully');
+
+    // Wait a moment for database consistency
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Now test login with the created user
+    log(`🔑 Attempting login with: ${testUser.email}`, 'yellow');
+    
+    const loginResponse = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      email: testUser.email,
+      password: testUser.password
+    }, { timeout: 10000 });
+
+    // Test login response structure
+    if (loginResponse.status === 200) {
+      logTest('Login HTTP Status', true, 'Status: 200 OK');
+    } else {
+      logTest('Login HTTP Status', false, `Expected 200, got ${loginResponse.status}`);
+      return { success: false };
+    }
+
+    if (loginResponse.data && loginResponse.data.success) {
+      logTest('Login Success Flag', true, 'Response indicates successful login');
+    } else {
+      logTest('Login Success Flag', false, 'Login success flag not set');
+      return { success: false };
+    }
+
+    if (loginResponse.data && loginResponse.data.message === 'Login successful') {
+      logTest('Login Success Message', true, 'Correct success message received');
+    } else {
+      logTest('Login Success Message', false, 'Incorrect or missing success message');
+    }
+
+    // Verify JWT token is provided
+    if (loginResponse.data && loginResponse.data.data && loginResponse.data.data.token) {
+      logTest('JWT Token Provided', true, 'Login response contains JWT token');
+      
+      // Verify token format (basic JWT structure check)
+      const token = loginResponse.data.data.token;
+      const tokenParts = token.split('.');
+      if (tokenParts.length === 3) {
+        logTest('JWT Token Format', true, 'Token has correct JWT structure (3 parts)');
+      } else {
+        logTest('JWT Token Format', false, `Token has ${tokenParts.length} parts, expected 3`);
+      }
+
+      // Test token doesn't contain sensitive information
+      try {
+        const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+        if (!payload.password && !payload.email) {
+          logTest('JWT Token Security', true, 'Token payload doesn\'t contain sensitive data');
+        } else {
+          logTest('JWT Token Security', false, 'Token contains sensitive information');
+        }
+      } catch (tokenError) {
+        logTest('JWT Token Security', false, 'Unable to parse token payload for security check');
+      }
+
+    } else {
+      logTest('JWT Token Provided', false, 'No JWT token in login response');
+      return { success: false };
+    }
+
+    // Verify user data is returned
+    if (loginResponse.data && loginResponse.data.data && loginResponse.data.data.user) {
+      const userData = loginResponse.data.data.user;
+      
+      if (userData.email === testUser.email.toLowerCase()) {
+        logTest('User Data Email', true, 'Returned user email matches login email');
+      } else {
+        logTest('User Data Email', false, 'Email mismatch in user data');
+      }
+
+      if (userData.name === testUser.name) {
+        logTest('User Data Name', true, 'Returned user name matches registration');
+      } else {
+        logTest('User Data Name', false, 'Name mismatch in user data');
+      }
+
+      if (!userData.password) {
+        logTest('User Data Security', true, 'Password not exposed in user data');
+      } else {
+        logTest('User Data Security', false, 'Password exposed in user data (security risk)');
+      }
+
+    } else {
+      logTest('User Data Provided', false, 'No user data in login response');
+    }
+
+    // Test localStorage simulation (since we can't actually test browser localStorage in Node.js)
+    const token = loginResponse.data.data.token;
+    if (token && typeof token === 'string' && token.length > 20) {
+      logTest('JWT Ready for localStorage', true, 'Token format suitable for localStorage storage');
+    } else {
+      logTest('JWT Ready for localStorage', false, 'Token not suitable for storage');
+    }
+
+    // Simulate job board redirect check (verify we have necessary data)
+    if (loginResponse.data.data.user && loginResponse.data.data.token) {
+      logTest('Redirect Data Available', true, 'All data needed for job board redirect present');
+    } else {
+      logTest('Redirect Data Available', false, 'Missing data for job board redirect');
+    }
+
+    log(`\n✅ Login Test Summary:`, 'green');
+    log(`   • User: ${testUser.email}`, 'cyan');
+    log(`   • Status: Login Successful`, 'cyan');
+    log(`   • JWT: Generated and secure`, 'cyan');
+    log(`   • Ready for: Job board redirect`, 'cyan');
+
+    return { success: true };
+
+  } catch (error) {
+    logTest('Login Test - Network/Server Error', false, 
+      `Login test failed: ${error.response ? 
+        `${error.response.status} - ${error.response.data?.message || error.message}` : 
+        error.message}`);
+    return { success: false, error: error.message };
+  }
+}
+
+// GitIgnore Security Validation
+async function validateGitIgnoreFiles() {
+  log('\n🔒 GitIgnore Security Validation', 'blue');
+  log('   Action: Verify .gitignore files prevent sensitive data exposure', 'dim');
+  log('   Expected: All sensitive patterns properly ignored\n', 'dim');
+
+  const fs = require('fs');
+  const path = require('path');
+
+  const gitignoreChecks = [
+    {
+      file: '.gitignore',
+      path: path.join(process.cwd(), '.gitignore'),
+      required: ['.env', 'node_modules', '*.sqlite', '*.db', '*.log']
+    },
+    {
+      file: 'client/.gitignore', 
+      path: path.join(process.cwd(), 'client', '.gitignore'),
+      required: ['node_modules', 'dist', '*.local', '.env']
+    },
+    {
+      file: 'server/.gitignore',
+      path: path.join(process.cwd(), 'server', '.gitignore'), 
+      required: ['.env', 'node_modules', '*.sqlite', '*.db', '*.log']
+    }
+  ];
+
+  let allChecksPass = true;
+
+  for (const check of gitignoreChecks) {
+    try {
+      if (fs.existsSync(check.path)) {
+        const content = fs.readFileSync(check.path, 'utf8');
+        
+        logTest(`GitIgnore File Exists: ${check.file}`, true, 'File found');
+        
+        let allPatternsFound = true;
+        for (const pattern of check.required) {
+          if (content.includes(pattern)) {
+            logTest(`Security Pattern: ${pattern}`, true, `Found in ${check.file}`);
+          } else {
+            logTest(`Security Pattern: ${pattern}`, false, `Missing from ${check.file}`);
+            allPatternsFound = false;
+            allChecksPass = false;
+          }
+        }
+
+      } else {
+        logTest(`GitIgnore File Exists: ${check.file}`, false, 'File not found');
+        allChecksPass = false;
+      }
+    } catch (error) {
+      logTest(`GitIgnore Check: ${check.file}`, false, `Error reading file: ${error.message}`);
+      allChecksPass = false;
+    }
+  }
+
+  return { success: allChecksPass };
+}
 
 // Main Professional Test Runner
 async function runDockerTests() {
@@ -385,13 +854,26 @@ async function runDockerTests() {
     return;
   }
 
-  log(`${colors.bold}📋 PHASE 2: REGISTRATION TEST CASES${colors.reset}`, 'blue');
+  log(`${colors.bold}📋 PHASE 2: SECURITY VALIDATION${colors.reset}`, 'blue');
+  
+  // Security Check: GitIgnore Files
+  const gitignoreResult = await validateGitIgnoreFiles();
+
+  log(`${colors.bold}📋 PHASE 3: REGISTRATION TEST CASES${colors.reset}`, 'blue');
   
   // Test Case 1: Registration Success
   const registrationResult = await testRegistrationSuccess();
   
   // Test Case 2: Duplicate Email Prevention  
   const duplicateEmailResult = await testRegistrationDuplicateEmail();
+  
+  // Test Case 3: Invalid Input Validation
+  const invalidInputResult = await testRegistrationInvalidInput();
+
+  log(`${colors.bold}🔐 PHASE 4: AUTHENTICATION TEST CASES${colors.reset}`, 'blue');
+  
+  // Test Case 4: Login Success
+  const loginResult = await testLoginSuccess();
 
   // Summary Report
   log(`\n${colors.bold}${colors.cyan}═══════════════════════════════════════════════════════════════════${colors.reset}`);
@@ -406,18 +888,23 @@ async function runDockerTests() {
   
   // Detailed Results
   log(`\n${colors.bold}📋 TEST CASE RESULTS:${colors.reset}`);
+  log(`${gitignoreResult.success ? '✅' : '❌'} GitIgnore Security: ${gitignoreResult.success ? 'PASSED' : 'FAILED'}`);
   log(`${registrationResult.success ? '✅' : '❌'} Registration Success: ${registrationResult.success ? 'PASSED' : 'FAILED'}`);
   log(`${duplicateEmailResult.success ? '✅' : '❌'} Duplicate Email Prevention: ${duplicateEmailResult.success ? 'PASSED' : 'FAILED'}`);
+  log(`${invalidInputResult.success ? '✅' : '❌'} Invalid Input Validation: ${invalidInputResult.success ? 'PASSED' : 'FAILED'} (${invalidInputResult.testsPassed || 0}/${invalidInputResult.testsRun || 0} sub-tests)`);
+  log(`${loginResult.success ? '✅' : '❌'} Login Success: ${loginResult.success ? 'PASSED' : 'FAILED'}`);
   
   if (testResults.failed === 0) {
     log(`\n${colors.bold}${colors.green}🎉 ALL TESTS PASSED! (${successRate}%)${colors.reset}`);
+    log(`${colors.green}✅ GitIgnore security is PROPERLY CONFIGURED!${colors.reset}`);
     log(`${colors.green}✅ Registration functionality is PRODUCTION READY!${colors.reset}`);
+    log(`${colors.green}✅ Login authentication is WORKING PERFECTLY!${colors.reset}`);
     log(`${colors.green}✅ Security measures are PROPERLY IMPLEMENTED!${colors.reset}`);
     log(`${colors.green}✅ Error handling is WORKING CORRECTLY!${colors.reset}`);
     log(`${colors.cyan}🚀 Ready for deployment to Railway and Vercel!${colors.reset}`);
   } else {
     log(`\n${colors.bold}${colors.red}❌ TESTS FAILED! (${successRate}% success rate)${colors.reset}`);
-    log(`${colors.red}Registration functionality has CRITICAL ISSUES that must be fixed!${colors.reset}`);
+    log(`${colors.red}Application functionality has CRITICAL ISSUES that must be fixed!${colors.reset}`);
     log(`${colors.yellow}Please review and fix ALL failing tests before proceeding.${colors.reset}`);
     log(`${colors.yellow}No deployment should happen until 100% test success rate is achieved.${colors.reset}`);
   }
@@ -447,5 +934,8 @@ if (require.main === module) {
 module.exports = {
   runDockerTests,
   testRegistrationSuccess,
-  testRegistrationDuplicateEmail
+  testRegistrationDuplicateEmail,
+  testRegistrationInvalidInput,
+  testLoginSuccess,
+  validateGitIgnoreFiles
 };
