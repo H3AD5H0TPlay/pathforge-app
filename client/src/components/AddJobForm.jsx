@@ -56,13 +56,14 @@ const AddJobForm = ({ onJobAdded, onClose, token, isDemoMode }) => {
       // Handle demo mode
       if (isDemoMode || (token && token.startsWith('demo-mode-token-'))) {
         console.log('🎭 Demo mode - simulating job creation');
-        // Create a mock response for demo mode
+        // Create a mock response for demo mode (using SQLite format with id field)
         response = {
           data: {
-            _id: 'demo-' + Date.now(),
+            id: 'demo-' + Date.now(),
             ...jobData,
             appliedDate: jobData.appliedDate,
             updatedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
             postedBy: 'demo-user'
           }
         };

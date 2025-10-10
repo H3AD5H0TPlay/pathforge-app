@@ -68,8 +68,9 @@ const Job = sequelize.define('Job', {
     allowNull: true
   },
   requirements: {
-    type: DataTypes.TEXT,
-    allowNull: true
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
   },
   userId: {
     type: DataTypes.INTEGER,
@@ -93,10 +94,5 @@ const Job = sequelize.define('Job', {
     }
   ]
 });
-
-// Define associations
-Job.associate = (models) => {
-  Job.belongsTo(models.User, { foreignKey: 'userId', as: 'postedBy' });
-};
 
 module.exports = Job;

@@ -17,8 +17,12 @@ const connectDB = async () => {
     await sequelize.authenticate();
     console.log('✅ SQLite Database Connected Successfully!');
     
-    // Sync all models
-    await sequelize.sync({ alter: true });
+    // Define model associations
+    Job.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+    User.hasMany(Job, { foreignKey: 'userId', as: 'jobs' });
+    
+    // Sync all models (force: true to recreate tables)
+    await sequelize.sync({ force: true });
     console.log('✅ Database synchronized successfully!');
   } catch (error) {
     console.error('❌ Database connection error:', error.message);
@@ -36,7 +40,11 @@ const corsOptions = {
     'http://localhost:5173', // Vite dev server
     'http://127.0.0.1:5173',
     'http://localhost:4173', // Vite preview
-    'http://127.0.0.1:3000'
+    'http://127.0.0.1:3000',
+    'http://localhost', // Docker frontend (port 80)
+    'http://localhost:80', // Docker frontend explicit port
+    'http://127.0.0.1', // Docker frontend
+    'http://127.0.0.1:80' // Docker frontend explicit port
   ],
   credentials: true,
   optionsSuccessStatus: 200,

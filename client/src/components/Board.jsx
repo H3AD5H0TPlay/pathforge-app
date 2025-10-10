@@ -238,9 +238,9 @@ const Board = () => {
       };
 
       jobs.forEach(job => {
-        // Convert MongoDB _id to id and format dates
+        // Format job data for SQLite (uses regular id field, not _id)
         const formattedJob = {
-          id: job._id,
+          id: job.id,
           title: job.title,
           company: job.company,
           location: job.location,
@@ -254,13 +254,13 @@ const Board = () => {
           postedBy: job.postedBy
         };
 
-        jobsById[job._id] = formattedJob;
+        jobsById[job.id] = formattedJob;
         
         // Add to appropriate column
         if (columnJobIds[job.status]) {
-          columnJobIds[job.status].push(job._id);
+          columnJobIds[job.status].push(job.id);
         } else {
-          columnJobIds.applied.push(job._id); // Default to applied if status is unknown
+          columnJobIds.applied.push(job.id); // Default to applied if status is unknown
         }
       });
 
@@ -363,11 +363,11 @@ const Board = () => {
   const addJob = (newJob) => {
     console.log('Adding new job to board:', newJob);
     
-    // Add job to jobs object
+    // Add job to jobs object (using SQLite id field, not _id)
     const newJobs = {
       ...data.jobs,
-      [newJob._id]: {
-        id: newJob._id,
+      [newJob.id]: {
+        id: newJob.id,
         title: newJob.title,
         company: newJob.company,
         location: newJob.location,
@@ -387,7 +387,7 @@ const Board = () => {
     if (newColumns[newJob.status]) {
       newColumns[newJob.status] = {
         ...newColumns[newJob.status],
-        jobIds: [...newColumns[newJob.status].jobIds, newJob._id]
+        jobIds: [...newColumns[newJob.status].jobIds, newJob.id]
       };
     }
     
