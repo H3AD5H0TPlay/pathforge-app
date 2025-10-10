@@ -3,10 +3,14 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
+!.env.*.example
 .env.local
+.env.development
 .env.development.local
-.env.test.local
+.env.production
 .env.production.local
+.env.test.local
 
 # Database
 *.sqlite
