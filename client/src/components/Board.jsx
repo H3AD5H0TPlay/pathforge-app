@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { DragDropContext, Draggable } from 'react-beautiful-dnd';
+import { useAuth } from '../contexts/AuthContext';
 import Column from './Column';
 import AddJobForm from './AddJobForm';
 import './Board.css';
-
-// API Configuration
-const API_BASE_URL = 'http://localhost:3000/api';
-
-// Set up axios defaults
-axios.defaults.baseURL = API_BASE_URL;
 
 // Initial empty data structure
 const emptyData = {
@@ -43,11 +38,7 @@ const Board = () => {
   const [data, setData] = useState(emptyData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [token, setToken] = useState(() => {
-    const storedToken = localStorage.getItem('token');
-    console.log('Initial token from localStorage:', storedToken);
-    return storedToken;
-  });
+  const { token, user } = useAuth();
   const [backendStatus, setBackendStatus] = useState('checking');
   const [showAddJobForm, setShowAddJobForm] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
