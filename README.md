@@ -33,7 +33,7 @@
 - **Protected Routes** - Route-level access control
 - **Password Security** - Bcrypt hashing for user passwords
 - **Token Management** - Automatic token refresh and expiration handling
-- **Demo Mode** - Try the app without registration
+
 
 ### 📊 Job Management
 - **CRUD Operations** - Create, read, update, and delete job applications
@@ -80,10 +80,10 @@
 
 > **Note**: Replace the URLs above with your actual deployed application URLs after deployment.
 
-### Demo Account
-Try the application without registration:
-- Click **"🚀 Try Demo Account"** on the login page
-- Or create your own account with the registration form
+### Getting Started
+Create your account and start tracking applications:
+- Register for a new account on the registration page
+- Or log in if you already have an account
 
 ## 🏃‍♂️ Local Development
 
@@ -365,7 +365,7 @@ Comprehensive testing of live production deployment.
 
 - [ ] User Registration
 - [ ] User Login/Logout  
-- [ ] Demo Mode Access
+
 - [ ] Protected Route Access
 - [ ] Job Creation
 - [ ] Job Status Updates (Drag & Drop)

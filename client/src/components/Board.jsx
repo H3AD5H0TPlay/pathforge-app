@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { DragDropContext, Draggable } from 'react-beautiful-dnd';
 import { useAuth } from '../contexts/AuthContext';
+import { jobLogger, errorLogger, performanceLogger } from '../utils/logger';
 import Column from './Column';
 import AddJobForm from './AddJobForm';
 import './Board.css';
@@ -42,138 +43,16 @@ const Board = () => {
   const [backendStatus, setBackendStatus] = useState('checking');
   const [showAddJobForm, setShowAddJobForm] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [isDemoMode, setIsDemoMode] = useState(() => {
-    return localStorage.getItem('demoMode') === 'true';
-  });
+
 
   // Debug logging (only show if needed)
   useEffect(() => {
     if (token) {
       console.log('✅ Token loaded:', token.substring(0, 20) + '...');
     } else {
-      console.log('ℹ️ No authentication token - click "Login for Testing" to authenticate');
+      console.log('ℹ️ No authentication token - please log in to continue');
     }
   }, [token]);
-
-  // Demo login function for testing
-  const handleDemoLogin = async () => {
-    if (isLoggingIn) return; // Prevent multiple simultaneous login attempts
-    
-    try {
-      setIsLoggingIn(true);
-      setError(''); // Clear any previous errors
-      console.log('Starting demo login process...');
-      console.log('Axios base URL:', axios.defaults.baseURL);
-      
-      // First, test if the auth endpoints are reachable
-      console.log('Testing backend endpoints...');
-      try {
-        // Test if the auth routes are working by checking a simple endpoint
-        const testResponse = await axios.get('/auth/test').catch(() => null);
-        console.log('Auth endpoint test result:', testResponse ? 'Available' : 'Not available');
-      } catch (e) {
-        console.log('Auth endpoint test completed, proceeding...');
-      }
-      
-      // First try to register a test user
-      console.log('Attempting to register user at:', `${axios.defaults.baseURL}/auth/register`);
-      let registerSuccess = false;
-      
-      try {
-        const registerResponse = await axios.post('/auth/register', {
-          name: 'Test User',
-          email: 'test@example.com',
-          password: 'testpassword123'
-        });
-        console.log('✅ Registration successful:', registerResponse.data);
-        registerSuccess = true;
-      } catch (err) {
-        console.log('⚠️ Registration failed:', {
-          status: err.response?.status,
-          message: err.response?.data?.message,
-          url: `${axios.defaults.baseURL}/auth/register`
-        });
-        
-        // If user already exists (400 error), that's fine
-        if (err.response?.status === 400 && err.response?.data?.message?.includes('already exists')) {
-          console.log('✅ User already exists, proceeding to login...');
-          registerSuccess = true;
-        } else {
-          console.error('❌ Registration failed with unexpected error:', err.response?.data);
-          // Continue anyway, maybe user exists
-          registerSuccess = true;
-        }
-      }
-
-      if (!registerSuccess) {
-        throw new Error('Registration failed and cannot proceed to login');
-      }
-
-      // Now login to get the token
-      console.log('Attempting login at:', `${axios.defaults.baseURL}/auth/login`);
-      const loginResponse = await axios.post('/auth/login', {
-        email: 'test@example.com',
-        password: 'testpassword123'
-      });
-
-      console.log('Login response status:', loginResponse.status);
-      console.log('Login response data:', loginResponse.data);
-
-      if (loginResponse.data.success && loginResponse.data.token) {
-        const newToken = loginResponse.data.token;
-        
-        // Store token with verification
-        console.log('Storing token in localStorage...');
-        localStorage.setItem('token', newToken);
-        
-        // Verify storage immediately
-        const storedToken = localStorage.getItem('token');
-        console.log('Token storage verification:', storedToken === newToken ? 'SUCCESS' : 'FAILED');
-        console.log('Stored token preview:', storedToken ? storedToken.substring(0, 20) + '...' : 'NULL');
-        
-        // Update state
-        setToken(newToken);
-        console.log('Demo login successful, token stored and state updated');
-        
-        // Trigger a re-fetch of jobs with the new token
-        setTimeout(() => {
-          console.log('Fetching jobs with new token...');
-          fetchJobs();
-        }, 100);
-      } else {
-        throw new Error(`Login response invalid: ${JSON.stringify(loginResponse.data)}`);
-      }
-    } catch (err) {
-      console.error('❌ Demo login error details:', {
-        message: err.message,
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        data: err.response?.data,
-        url: err.config?.url,
-        fullError: err
-      });
-      
-      let errorMessage = 'Authentication failed';
-      if (err.response?.status === 401) {
-        errorMessage = 'Invalid credentials - this might indicate the backend database is not properly set up';
-      } else if (err.response?.status === 500) {
-        errorMessage = 'Backend server error - check if MongoDB is connected';
-      } else if (err.code === 'ECONNREFUSED') {
-        errorMessage = 'Cannot connect to backend server - check if it\'s running on port 3000';
-      } else if (err.response?.data?.message) {
-        errorMessage = `Backend error: ${err.response.data.message}`;
-      } else {
-        errorMessage = `Network error: ${err.message}`;
-      }
-      
-      setError(errorMessage);
-      
-      // Offer a fallback demo mode
-      console.log('🔄 Consider using demo mode without backend authentication');
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
 
   // Check backend status
   const checkBackendStatus = async () => {
@@ -199,17 +78,16 @@ const Board = () => {
 
   // API Functions
   const fetchJobs = async () => {
+    const startTime = performance.now();
+    
     try {
       setLoading(true);
       setError(null);
       
-      // Check if we're in demo mode (fake token)
-      if (token && token.startsWith('demo-mode-token-')) {
-        console.log('🎭 Demo mode detected - using sample data instead of API calls');
-        // Use sample data for demo mode
-        loadSampleData();
-        return;
-      }
+      // Log jobs loading start
+      jobLogger.loadJobsStart();
+      
+      // Fetch jobs from API
       
       const response = await axios.get('/jobs', {
         headers: {
@@ -267,8 +145,21 @@ const Board = () => {
         columnOrder: ['applied', 'interview', 'offer', 'rejected']
       });
 
+      // Log successful jobs load
+      const responseTime = performance.now() - startTime;
+      if (jobs.length === 0) {
+        jobLogger.loadJobsEmpty();
+      } else {
+        jobLogger.loadJobsSuccess(jobs, responseTime);
+      }
+
     } catch (err) {
       console.error('Error fetching jobs:', err);
+      
+      // Log load error
+      jobLogger.loadJobsError(err);
+      errorLogger.networkError(err, 'Loading jobs');
+      
       setError(err.response?.data?.message || 'Failed to fetch jobs');
     } finally {
       setLoading(false);
@@ -276,14 +167,15 @@ const Board = () => {
   };
 
   const updateJobStatus = async (jobId, newStatus) => {
+    const startTime = performance.now();
+    
     try {
       console.log(`Updating job ${jobId} status to ${newStatus}`);
       
-      // Handle demo mode - just return success without API call
-      if (isDemoMode || (token && token.startsWith('demo-mode-token-'))) {
-        console.log('🎭 Demo mode - simulating job status update');
-        return true;
-      }
+      // Log API call
+      jobLogger.updateJobApiCall(jobId, { status: newStatus });
+      
+
       
       const response = await axios.patch(`/jobs/${jobId}`, 
         { status: newStatus },
@@ -294,13 +186,21 @@ const Board = () => {
           }
         }
       );
-      console.log('Job status updated:', response.data);
+      
+      // Log successful update
+      const responseTime = performance.now() - startTime;
+      jobLogger.updateJobSuccess(response.data, responseTime);
+      
       return true;
     } catch (err) {
       console.error('Error updating job status:', err);
+      
+      // Log update error
+      jobLogger.updateJobError(err, jobId, newStatus);
+      
       setError(err.response?.data?.message || 'Failed to update job status');
       // Re-fetch jobs to revert any local changes
-      if (token && backendStatus === 'connected' && !isDemoMode) {
+      if (token && backendStatus === 'connected') {
         fetchJobs();
       }
       return false;
@@ -308,24 +208,34 @@ const Board = () => {
   };
 
   const deleteJob = async (jobId) => {
+    const job = data.jobs[jobId];
+    const jobTitle = job ? job.title : 'Unknown Job';
+    
+    // Log delete request
+    jobLogger.deleteJobStart(jobId, jobTitle);
+    
     if (!window.confirm('Are you sure you want to delete this job application?')) {
       return;
     }
 
+    // Log confirmation
+    jobLogger.deleteJobConfirm(jobId);
+
+    const startTime = performance.now();
+    
     try {
       console.log(`Deleting job ${jobId}`);
       
-      // Handle demo mode - skip API call
-      if (!isDemoMode && !(token && token.startsWith('demo-mode-token-'))) {
-        await axios.delete(`/jobs/${jobId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        console.log('Job deleted from backend');
-      } else {
-        console.log('🎭 Demo mode - simulating job deletion');
-      }
+      // Log API call
+      jobLogger.deleteJobApiCall(jobId);
+      
+      // Delete from backend
+      await axios.delete(`/jobs/${jobId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      console.log('Job deleted from backend');
       
       // Remove job from local state
       const newJobs = { ...data.jobs };
@@ -345,14 +255,26 @@ const Board = () => {
         columns: newColumns
       });
       
+      // Log successful deletion
+      const responseTime = performance.now() - startTime;
+      jobLogger.deleteJobSuccess(jobId, jobTitle, responseTime);
+      
     } catch (err) {
       console.error('Error deleting job:', err);
+      
+      // Log delete error
+      jobLogger.deleteJobError(err, jobId);
+      
       setError(err.response?.data?.message || 'Failed to delete job');
     }
   };
 
   const addJob = (newJob) => {
     console.log('Adding new job to board:', newJob);
+    
+    // Log successful job creation (this comes after API success)
+    const responseTime = 50; // Simulated since actual API call happens in AddJobForm
+    jobLogger.createJobSuccess(newJob, responseTime);
     
     // Add job to jobs object (using SQLite id field, not _id)
     const newJobs = {
@@ -468,12 +390,7 @@ const Board = () => {
     // console.log('useEffect called with token:', token); // Reduced logging
     
     const initializeApp = async () => {
-      // Check if we're in demo mode first
-      if (isDemoMode || (token && token.startsWith('demo-mode-token-'))) {
-        console.log('🎭 Demo mode detected - loading sample data immediately');
-        loadSampleData();
-        return;
-      }
+
       
       // Always check backend status first
       const isBackendConnected = await checkBackendStatus();
@@ -489,7 +406,7 @@ const Board = () => {
     };
     
     initializeApp();
-  }, [token, isDemoMode]);
+  }, [token]);
 
   const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
@@ -509,6 +426,10 @@ const Board = () => {
 
     const start = data.columns[source.droppableId];
     const finish = data.columns[destination.droppableId];
+    const job = data.jobs[draggableId];
+    
+    // Log drop success
+    jobLogger.dropSuccess(draggableId, job?.title || 'Unknown Job', source.droppableId, destination.droppableId);
 
     // Moving within the same column
     if (start === finish) {
@@ -687,7 +608,6 @@ const Board = () => {
             token={token}
             onJobAdded={addJob}
             onClose={() => setShowAddJobForm(false)}
-            isDemoMode={isDemoMode}
           />
         )}
       </div>
@@ -708,44 +628,8 @@ const Board = () => {
             </div>
           </div>
           <div className="header-right">
-            {!token && backendStatus === 'connected' && (
-              <div style={{display: 'flex', gap: '0.5rem', flexDirection: 'column'}}>
-                <button 
-                  className="auth-btn"
-                  onClick={() => {
-                    console.log('Login button clicked!');
-                    handleDemoLogin();
-                  }}
-                  disabled={isLoggingIn}
-                >
-                  {isLoggingIn ? 'Logging in...' : 'Login for Testing'}
-                </button>
-                <button 
-                  className="auth-btn"
-                  style={{fontSize: '0.8rem', padding: '0.3rem 0.8rem'}}
-                  onClick={() => {
-                    console.log('Using demo mode without backend auth');
-                    const demoToken = 'demo-mode-token-' + Date.now();
-                    localStorage.setItem('token', demoToken);
-                    localStorage.setItem('demoMode', 'true');
-                    setToken(demoToken);
-                    setIsDemoMode(true);
-                    setError('');
-                    console.log('✅ Demo mode activated - backend authentication bypassed');
-                  }}
-                >
-                  Demo Mode (Skip Auth)
-                </button>
-              </div>
-            )}
-            {/* Demo mode indicator */}
-            {isDemoMode && (
-              <div style={{fontSize: '0.9rem', background: 'rgba(251, 191, 36, 0.2)', color: '#f59e0b', padding: '0.5rem', borderRadius: '4px', marginTop: '0.5rem'}}>
-                🎭 Demo Mode Active - No backend required
-              </div>
-            )}
             {/* Debug info */}
-            {process.env.NODE_ENV === 'development' && !isDemoMode && (
+            {process.env.NODE_ENV === 'development' && (
               <div style={{fontSize: '0.8rem', opacity: 0.7, marginTop: '0.5rem'}}>
                 Token: {token ? 'Present' : 'None'} | Backend: {backendStatus}
               </div>
@@ -793,7 +677,6 @@ const Board = () => {
             token={token}
             onJobAdded={addJob}
             onClose={() => setShowAddJobForm(false)}
-            isDemoMode={isDemoMode}
           />
         )}
       </div>

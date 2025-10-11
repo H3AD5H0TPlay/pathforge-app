@@ -1,6 +1,9 @@
 # Frontend Dockerfile
 FROM node:18-alpine AS builder
 
+# Accept build arguments
+ARG VITE_API_URL=http://localhost:3000
+
 # Set working directory
 WORKDIR /app
 
@@ -13,6 +16,9 @@ RUN npm ci
 
 # Copy client source code
 COPY client/ ./
+
+# Set environment variable for build
+ENV VITE_API_URL=$VITE_API_URL
 
 # Build the application
 RUN npm run build

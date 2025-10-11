@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authLogger, performanceLogger, errorLogger } from '../utils/logger';
 import './Auth.css';
 
 const Register = () => {
@@ -15,6 +16,17 @@ const Register = () => {
 
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  // Log page load
+  useEffect(() => {
+    const startTime = performance.now();
+    performanceLogger.pageLoadStart('Register');
+    
+    return () => {
+      const loadTime = performance.now() - startTime;
+      performanceLogger.pageLoadComplete('Register', loadTime);
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,32 +47,40 @@ const Register = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Name validation
+    // Name validation with logging
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
+      errorLogger.formValidationError('name', 'required', formData.name);
     } else if (formData.name.trim().length < 2) {
       newErrors.name = 'Name must be at least 2 characters';
+      errorLogger.formValidationError('name', 'minLength', formData.name);
     }
 
-    // Email validation
+    // Email validation with logging
     if (!formData.email) {
       newErrors.email = 'Email is required';
+      errorLogger.formValidationError('email', 'required', formData.email);
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
+      errorLogger.formValidationError('email', 'format', formData.email);
     }
 
-    // Password validation
+    // Password validation with logging
     if (!formData.password) {
       newErrors.password = 'Password is required';
+      errorLogger.formValidationError('password', 'required', formData.password);
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
+      errorLogger.formValidationError('password', 'minLength', formData.password);
     }
 
-    // Confirm password validation
+    // Confirm password validation with logging
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
+      errorLogger.formValidationError('confirmPassword', 'required', formData.confirmPassword);
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
+      errorLogger.formValidationError('confirmPassword', 'match', 'passwords do not match');
     }
 
     return newErrors;
@@ -70,8 +90,18 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     
+    // Log registration start
+    authLogger.registrationStart(formData.email);
+    
     // Validate form
     const formErrors = validateForm();
+    
+    // Log validation result
+    authLogger.registrationValidation(
+      Object.keys(formErrors).length === 0, 
+      formErrors
+    );
+    
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
       setLoading(false);

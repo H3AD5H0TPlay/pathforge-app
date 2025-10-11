@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { jobLogger, errorLogger } from '../utils/logger';
 import './AddJobForm.css';
 
-const AddJobForm = ({ onJobAdded, onClose, token, isDemoMode }) => {
+const AddJobForm = ({ onJobAdded, onClose, token }) => {
   const [formData, setFormData] = useState({
     title: '',
     company: '',
@@ -15,6 +16,11 @@ const AddJobForm = ({ onJobAdded, onClose, token, isDemoMode }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Log form opening
+  useEffect(() => {
+    jobLogger.createJobStart();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -30,6 +36,24 @@ const AddJobForm = ({ onJobAdded, onClose, token, isDemoMode }) => {
     setError('');
 
     try {
+      // Validate form data with logging
+      const validationErrors = {};
+      
+      if (!formData.title.trim()) {
+        validationErrors.title = 'Job title is required';
+        errorLogger.formValidationError('title', 'required', formData.title);
+      }
+      
+      if (!formData.company.trim()) {
+        validationErrors.company = 'Company name is required';
+        errorLogger.formValidationError('company', 'required', formData.company);
+      }
+      
+      if (!formData.location.trim()) {
+        validationErrors.location = 'Location is required';
+        errorLogger.formValidationError('location', 'required', formData.location);
+      }
+
       // Convert requirements string to array
       const requirementsArray = formData.requirements
         .split('\n')
@@ -44,8 +68,24 @@ const AddJobForm = ({ onJobAdded, onClose, token, isDemoMode }) => {
         appliedDate: new Date().toISOString()
       };
 
+      // Log validation result
+      jobLogger.createJobValidation(
+        Object.keys(validationErrors).length === 0, 
+        validationErrors, 
+        jobData
+      );
+
+      if (Object.keys(validationErrors).length > 0) {
+        setError('Please fill in all required fields');
+        setLoading(false);
+        return;
+      }
+
       console.log('Submitting job data:', jobData);
       console.log('Using token for job creation:', token ? token.substring(0, 20) + '...' : 'No token available');
+
+      // Log API call
+      jobLogger.createJobApiCall(jobData);
 
       if (!token) {
         throw new Error('No authentication token available. Please login first.');
@@ -53,30 +93,14 @@ const AddJobForm = ({ onJobAdded, onClose, token, isDemoMode }) => {
 
       let response;
       
-      // Handle demo mode
-      if (isDemoMode || (token && token.startsWith('demo-mode-token-'))) {
-        console.log('🎭 Demo mode - simulating job creation');
-        // Create a mock response for demo mode (using SQLite format with id field)
-        response = {
-          data: {
-            id: 'demo-' + Date.now(),
-            ...jobData,
-            appliedDate: jobData.appliedDate,
-            updatedAt: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            postedBy: 'demo-user'
-          }
-        };
-        console.log('Demo job created:', response.data);
-      } else {
-        response = await axios.post('/jobs', jobData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        console.log('Job created:', response.data);
-      }
+      // Create job via API
+      response = await axios.post('/jobs', jobData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Job created:', response.data);
       
       // Notify parent component
       if (onJobAdded) {
@@ -102,6 +126,10 @@ const AddJobForm = ({ onJobAdded, onClose, token, isDemoMode }) => {
 
     } catch (err) {
       console.error('Error creating job:', err);
+      
+      // Log job creation error
+      jobLogger.createJobError(err, jobData);
+      
       setError(err.response?.data?.message || 'Failed to create job');
     } finally {
       setLoading(false);
@@ -158,13 +186,14 @@ const AddJobForm = ({ onJobAdded, onClose, token, isDemoMode }) => {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="location">Location</label>
+              <label htmlFor="location">Location *</label>
               <input
                 type="text"
                 id="location"
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
+                required
                 placeholder="e.g. San Francisco, CA or Remote"
               />
             </div>

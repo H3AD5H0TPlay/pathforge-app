@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { authLogger, routeLogger, performanceLogger } from '../utils/logger';
 
 const AuthContext = createContext();
 
@@ -96,34 +97,54 @@ export const AuthProvider = ({ children }) => {
 
   // Logout function (defined early so it can be used in configureAxios)
   const logout = () => {
+    // Log logout process
+    authLogger.logoutStart();
+    authLogger.logoutStorage();
+    
     authUtils.removeToken();
     setTokenState(null);
     setUser(null);
     configureAxios(null, null);
+    
+    // Log logout completion
+    authLogger.logoutStateCleared();
+    authLogger.logoutRedirect();
   };
 
   // Initialize authentication state
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // Log session check start
+        authLogger.sessionCheckStart();
+        authLogger.sessionTokenCheck();
+        
         const storedToken = authUtils.getToken();
-        if (storedToken && authUtils.isAuthenticated()) {
-          setTokenState(storedToken);
-          configureAxios(storedToken, logout);
+        if (storedToken) {
+          authLogger.sessionTokenFound(storedToken.length);
           
-          // Optionally fetch user data here
-          // const userResponse = await axios.get('/auth/profile');
-          // setUser(userResponse.data.user);
-          
-          // For now, we'll just set a basic user object
-          setUser({ authenticated: true });
+          if (authUtils.isAuthenticated()) {
+            setTokenState(storedToken);
+            configureAxios(storedToken, logout);
+            
+            // For now, we'll just set a basic user object
+            const userData = { authenticated: true };
+            setUser(userData);
+            
+            authLogger.sessionRestoreSuccess(userData);
+          } else {
+            // Token exists but is expired/invalid
+            authLogger.sessionRestoreError(new Error('Token expired or invalid'));
+            authUtils.removeToken();
+            configureAxios(null, logout);
+          }
         } else {
-          // Remove invalid/expired token
-          authUtils.removeToken();
+          authLogger.sessionTokenMissing();
           configureAxios(null, logout);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
+        authLogger.sessionRestoreError(error);
         logout();
       } finally {
         setLoading(false);
@@ -135,8 +156,15 @@ export const AuthProvider = ({ children }) => {
 
   // Login function
   const login = async (email, password) => {
+    const startTime = performance.now();
+    
     try {
       setLoading(true);
+      
+      // Log login start
+      authLogger.loginStart(email);
+      authLogger.loginApiCall(email);
+      
       const response = await axios.post('/auth/login', {
         email,
         password
@@ -150,9 +178,18 @@ export const AuthProvider = ({ children }) => {
       configureAxios(newToken, logout);
       setUser(userData);
 
+      // Log successful login
+      const responseTime = performance.now() - startTime;
+      authLogger.loginSuccess(email, userData, newToken);
+      performanceLogger.apiResponseTime('/auth/login', 'POST', responseTime);
+
       return { success: true, user: userData };
     } catch (error) {
       console.error('Login error:', error);
+      
+      // Log login error
+      authLogger.loginError(error, email);
+      
       return {
         success: false,
         message: error.response?.data?.message || 'Login failed'
@@ -164,8 +201,15 @@ export const AuthProvider = ({ children }) => {
 
   // Register function
   const register = async (name, email, password) => {
+    const startTime = performance.now();
+    
     try {
       setLoading(true);
+      
+      // Log registration start
+      authLogger.registrationStart(email);
+      authLogger.registrationApiCall(email);
+      
       const response = await axios.post('/auth/register', {
         name,
         email,
@@ -180,9 +224,18 @@ export const AuthProvider = ({ children }) => {
       configureAxios(newToken, logout);
       setUser(userData);
 
+      // Log successful registration
+      const responseTime = performance.now() - startTime;
+      authLogger.registrationSuccess(email, response);
+      performanceLogger.apiResponseTime('/auth/register', 'POST', responseTime);
+
       return { success: true, user: userData };
     } catch (error) {
       console.error('Registration error:', error);
+      
+      // Log registration error
+      authLogger.registrationError(error, email);
+      
       return {
         success: false,
         message: error.response?.data?.message || 'Registration failed'

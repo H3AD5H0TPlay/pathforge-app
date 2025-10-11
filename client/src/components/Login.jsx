@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authLogger, performanceLogger, errorLogger } from '../utils/logger';
 import './Auth.css';
 
 const Login = () => {
@@ -18,6 +19,17 @@ const Login = () => {
   // Redirect to intended page after login
   const from = location.state?.from?.pathname || '/';
 
+  // Log page load
+  useEffect(() => {
+    const startTime = performance.now();
+    performanceLogger.pageLoadStart('Login');
+    
+    return () => {
+      const loadTime = performance.now() - startTime;
+      performanceLogger.pageLoadComplete('Login', loadTime);
+    };
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -33,9 +45,30 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    // Basic validation
-    if (!formData.email || !formData.password) {
-      setError('Please fill in all fields');
+    // Validate form data with logging
+    const validationErrors = {};
+    
+    if (!formData.email) {
+      validationErrors.email = 'Email is required';
+      errorLogger.formValidationError('email', 'required', formData.email);
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      validationErrors.email = 'Please enter a valid email address';
+      errorLogger.formValidationError('email', 'format', formData.email);
+    }
+    
+    if (!formData.password) {
+      validationErrors.password = 'Password is required';
+      errorLogger.formValidationError('password', 'required', formData.password);
+    }
+
+    // Log validation result
+    authLogger.registrationValidation(
+      Object.keys(validationErrors).length === 0, 
+      validationErrors
+    );
+
+    if (Object.keys(validationErrors).length > 0) {
+      setError('Please fill in all fields correctly');
       setLoading(false);
       return;
     }
@@ -52,21 +85,7 @@ const Login = () => {
     setLoading(false);
   };
 
-  // Demo login function for testing
-  const handleDemoLogin = async () => {
-    setLoading(true);
-    setError('');
-    
-    const result = await login('test@example.com', 'testpassword123');
-    
-    if (result.success) {
-      navigate(from, { replace: true });
-    } else {
-      setError(result.message);
-    }
-    
-    setLoading(false);
-  };
+
 
   return (
     <div className="auth-container">
@@ -128,25 +147,7 @@ const Login = () => {
             )}
           </button>
 
-          <div className="auth-divider">
-            <span>or</span>
-          </div>
 
-          <button 
-            type="button"
-            onClick={handleDemoLogin}
-            className="auth-button demo"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <span className="spinner"></span>
-                Loading Demo...
-              </>
-            ) : (
-              '🚀 Try Demo Account'
-            )}
-          </button>
         </form>
 
         <div className="auth-footer">

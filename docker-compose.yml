@@ -34,6 +34,7 @@ services:
       dockerfile: Dockerfile.frontend
       args:
         - NODE_ENV=production
+        - VITE_API_URL=http://localhost:3000
     container_name: pathforge-frontend
     ports:
       - "80:80"
