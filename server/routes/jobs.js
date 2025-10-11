@@ -40,6 +40,33 @@ router.post('/', authenticateToken, async (req, res) => {
     res.status(201).json(job);
   } catch (error) {
     console.error('Create job error:', error);
+    
+    // Handle Sequelize validation errors (includes ValidationError and SequelizeValidationError)
+    if (error.name === 'SequelizeValidationError' || error.name === 'ValidationError') {
+      const validationErrors = error.errors.map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: validationErrors.join(', '),
+        errors: validationErrors
+      });
+    }
+    
+    // Handle Sequelize unique constraint errors
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({
+        success: false,
+        message: 'A job with this information already exists'
+      });
+    }
+    
+    // Handle other Sequelize database errors
+    if (error.name && error.name.includes('Sequelize')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid job data provided'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Failed to create job application'
@@ -71,6 +98,38 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     res.json(job);
   } catch (error) {
     console.error('Update job error:', error);
+    
+    // Handle Sequelize validation errors
+    if (error.name === 'SequelizeValidationError') {
+      const validationErrors = error.errors.map(err => ({
+        field: err.path,
+        message: err.message,
+        value: err.value
+      }));
+      
+      return res.status(400).json({
+        success: false,
+        message: error.errors[0]?.message || 'Validation failed',
+        errors: validationErrors
+      });
+    }
+    
+    // Handle Sequelize database constraint errors
+    if (error.name === 'SequelizeDatabaseError' && error.original) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid data provided'
+      });
+    }
+    
+    // Handle other Sequelize database errors
+    if (error.name && error.name.includes('Sequelize')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid job data provided'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Failed to update job application'

@@ -52,7 +52,13 @@ const Job = sequelize.define('Job', {
   },
   status: {
     type: DataTypes.ENUM('applied', 'interview', 'offer', 'rejected'),
-    defaultValue: 'applied'
+    defaultValue: 'applied',
+    validate: {
+      isIn: {
+        args: [['applied', 'interview', 'offer', 'rejected']],
+        msg: 'Status must be one of: applied, interview, offer, rejected'
+      }
+    }
   },
   salary: {
     type: DataTypes.STRING,
